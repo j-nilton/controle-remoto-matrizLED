@@ -76,6 +76,9 @@ pico_enable_stdio_usb(pico_w_wifi_complete_example 1)
 target_link_libraries(pico_w_wifi_complete_example
         pico_stdlib)
 
+# Generate PIO header
+pico_generate_pio_header(pico_w_wifi_complete_example ${CMAKE_CURRENT_LIST_DIR}/ws2818b.pio)
+
 # Add the standard include files to the build
 target_include_directories(pico_w_wifi_complete_example PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}

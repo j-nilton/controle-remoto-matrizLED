@@ -1,21 +1,76 @@
-#include "pico/cyw43_arch.h"
+#include <stdio.h>
 #include "pico/stdlib.h"
+#include "hardware/pio.h"
+#include "hardware/clocks.h"
+#include "ws2818b.pio.h"
+#include "pico/cyw43_arch.h"
 #include "lwip/tcp.h"
 #include <string.h>
-#include <stdio.h>
 
-#define LED_PIN 12              // Pino do LED
-#define BUTTON1_PIN 5           // Pino do botão 1
-#define BUTTON2_PIN 6           // Pino do botão 2
-#define WIFI_SSID "JOSE NILTON" // Substitua pelo nome da sua rede Wi-Fi
-#define WIFI_PASS "11185706"    // Substitua pela senha da sua rede Wi-Fi
+#define LED_COUNT 25
+#define LED_PIN 7
+#define WIFI_SSID "Nome da rede"  // Substitua pelo nome da sua rede Wi-Fi
+#define WIFI_PASS "senha da rede" // Substitua pela senha da sua rede Wi-Fi
 
-// Estado dos botões (inicialmente sem mensagens)
-char button1_message[50] = "Nenhum evento no botão 1";
-char button2_message[50] = "Nenhum evento no botão 2";
+struct pixel_t
+{
+    uint8_t G, R, B;
+};
+typedef struct pixel_t pixel_t;
+typedef pixel_t npLED_t;
+
+npLED_t leds[LED_COUNT];
+PIO np_pio;
+uint sm;
+
+void npInit(uint pin)
+{
+    uint offset = pio_add_program(pio0, &ws2818b_program);
+    np_pio = pio0;
+    sm = pio_claim_unused_sm(np_pio, false);
+    if (sm < 0)
+    {
+        np_pio = pio1;
+        sm = pio_claim_unused_sm(np_pio, true);
+    }
+    ws2818b_program_init(np_pio, sm, offset, pin, 800000.f);
+    for (uint i = 0; i < LED_COUNT; ++i)
+    {
+        leds[i].R = leds[i].G = leds[i].B = 0;
+    }
+}
+
+void npSetLED(const uint index, const uint8_t r, const uint8_t g, const uint8_t b)
+{
+    leds[index].R = r;
+    leds[index].G = g;
+    leds[index].B = b;
+}
+
+void npClear()
+{
+    for (uint i = 0; i < LED_COUNT; ++i)
+        npSetLED(i, 0, 0, 0);
+}
+
+void npWrite()
+{
+    for (uint i = 0; i < LED_COUNT; ++i)
+    {
+        pio_sm_put_blocking(np_pio, sm, leds[i].G);
+        pio_sm_put_blocking(np_pio, sm, leds[i].R);
+        pio_sm_put_blocking(np_pio, sm, leds[i].B);
+    }
+    sleep_us(100);
+}
+
+int getIndex(int x, int y)
+{
+    return (y % 2 == 0) ? 24 - (y * 5 + x) : 24 - (y * 5 + (4 - x));
+}
 
 // Buffer para resposta HTTP
-char http_response[1024];
+char http_response[4096];
 
 // Função para criar a resposta HTTP
 void create_http_response()
@@ -26,19 +81,50 @@ void create_http_response()
              "<html>"
              "<head>"
              "  <meta charset=\"UTF-8\">"
-             "  <title>Controle do LED e Botões</title>"
+             "  <title>Controle da Matriz de LEDs</title>"
              "</head>"
              "<body>"
-             "  <h1>Controle do LED e Botões</h1>"
-             "  <p><a href=\"/led/on\">Ligar LED</a></p>"
-             "  <p><a href=\"/led/off\">Desligar LED</a></p>"
-             "  <p><a href=\"/update\">Atualizar Estado</a></p>"
-             "  <h2>Estado dos Botões:</h2>"
-             "  <p>Botão 1: %s</p>"
-             "  <p>Botão 2: %s</p>"
+             "  <h1>Controle da Matriz de LEDs 5x5</h1>"
+             "  <table>"
+             "    <tr>"
+             "      <td><a href=\"/led/0/0/on\"><img src=\"img/led_on.png\" alt=\"LED (0,0)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/0/1/on\"><img src=\"img/led_on.png\" alt=\"LED (0,1)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/0/2/on\"><img src=\"img/led_on.png\" alt=\"LED (0,2)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/0/3/on\"><img src=\"img/led_on.png\" alt=\"LED (0,3)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/0/4/on\"><img src=\"img/led_on.png\" alt=\"LED (0,4)\" width=\"20\" height=\"20\"></a></td>"
+             "    </tr>"
+             "    <tr>"
+             "      <td><a href=\"/led/1/0/on\"><img src=\"img/led_on.png\" alt=\"LED (1,0)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/1/1/on\"><img src=\"img/led_on.png\" alt=\"LED (1,1)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/1/2/on\"><img src=\"img/led_on.png\" alt=\"LED (1,2)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/1/3/on\"><img src=\"img/led_on.png\" alt=\"LED (1,3)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/1/4/on\"><img src=\"img/led_on.png\" alt=\"LED (1,4)\" width=\"20\" height=\"20\"></a></td>"
+             "    </tr>"
+             "    <tr>"
+             "      <td><a href=\"/led/2/0/on\"><img src=\"img/led_on.png\" alt=\"LED (2,0)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/2/1/on\"><img src=\"img/led_on.png\" alt=\"LED (2,1)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/2/2/on\"><img src=\"img/led_on.png\" alt=\"LED (2,2)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/2/3/on\"><img src=\"img/led_on.png\" alt=\"LED (2,3)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/2/4/on\"><img src=\"img/led_on.png\" alt=\"LED (2,4)\" width=\"20\" height=\"20\"></a></td>"
+             "    </tr>"
+             "    <tr>"
+             "      <td><a href=\"/led/3/0/on\"><img src=\"img/led_on.png\" alt=\"LED (3,0)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/3/1/on\"><img src=\"img/led_on.png\" alt=\"LED (3,1)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/3/2/on\"><img src=\"img/led_on.png\" alt=\"LED (3,2)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/3/3/on\"><img src=\"img/led_on.png\" alt=\"LED (3,3)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/3/4/on\"><img src=\"img/led_on.png\" alt=\"LED (3,4)\" width=\"20\" height=\"20\"></a></td>"
+             "    </tr>"
+             "    <tr>"
+             "      <td><a href=\"/led/4/0/on\"><img src=\"img/led_on.png\" alt=\"LED (4,0)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/4/1/on\"><img src=\"img/led_on.png\" alt=\"LED (4,1)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/4/2/on\"><img src=\"img/led_on.png\" alt=\"LED (4,2)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/4/3/on\"><img src=\"img/led_on.png\" alt=\"LED (4,3)\" width=\"20\" height=\"20\"></a></td>"
+             "      <td><a href=\"/led/4/4/on\"><img src=\"img/led_on.png\" alt=\"LED (4,4)\" width=\"20\" height=\"20\"></a></td>"
+             "    </tr>"
+             "  </table>"
+             "  <p><a href=\"/clear\">Desligar os LEDs</a></p>"
              "</body>"
-             "</html>\r\n",
-             button1_message, button2_message);
+             "</html>\r\n");
 }
 
 // Função de callback para processar requisições HTTP
@@ -54,16 +140,21 @@ static err_t http_callback(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_
     // Processa a requisição HTTP
     char *request = (char *)p->payload;
 
-    if (strstr(request, "GET /led/on"))
+    if (strstr(request, "GET /led/"))
     {
-        gpio_put(LED_PIN, 1); // Liga o LED
+        int x, y;
+        sscanf(request, "GET /led/%d/%d/on", &x, &y);
+        int index = getIndex(x, y);
+        npSetLED(index, 255, 255, 255); // Liga o LED na posição (x, y)
+        npWrite();
     }
-    else if (strstr(request, "GET /led/off"))
+    else if (strstr(request, "GET /clear"))
     {
-        gpio_put(LED_PIN, 0); // Desliga o LED
+        npClear(); // Desliga todos os LEDs
+        npWrite();
     }
 
-    // Atualiza o conteúdo da página com base no estado dos botões
+    // Atualiza o conteúdo da página
     create_http_response();
 
     // Envia a resposta HTTP
@@ -95,7 +186,7 @@ static void start_http_server(void)
     // Liga o servidor na porta 80
     if (tcp_bind(pcb, IP_ADDR_ANY, 80) != ERR_OK)
     {
-        printf("Erro ao ligar o servidor na porta 80\n");
+        printf("Erro ao o servidor na porta 80\n");
         return;
     }
 
@@ -105,51 +196,16 @@ static void start_http_server(void)
     printf("Servidor HTTP rodando na porta 80...\n");
 }
 
-// Função para monitorar o estado dos botões
-void monitor_buttons()
-{
-    static bool button1_last_state = false;
-    static bool button2_last_state = false;
-
-    bool button1_state = !gpio_get(BUTTON1_PIN); // Botão pressionado = LOW
-    bool button2_state = !gpio_get(BUTTON2_PIN);
-
-    if (button1_state != button1_last_state)
-    {
-        button1_last_state = button1_state;
-        if (button1_state)
-        {
-            snprintf(button1_message, sizeof(button1_message), "Botão 1 foi pressionado!");
-            printf("Botão 1 pressionado\n");
-        }
-        else
-        {
-            snprintf(button1_message, sizeof(button1_message), "Botão 1 foi solto!");
-            printf("Botão 1 solto\n");
-        }
-    }
-
-    if (button2_state != button2_last_state)
-    {
-        button2_last_state = button2_state;
-        if (button2_state)
-        {
-            snprintf(button2_message, sizeof(button2_message), "Botão 2 foi pressionado!");
-            printf("Botão 2 pressionado\n");
-        }
-        else
-        {
-            snprintf(button2_message, sizeof(button2_message), "Botão 2 foi solto!");
-            printf("Botão 2 solto\n");
-        }
-    }
-}
-
 int main()
 {
     stdio_init_all(); // Inicializa a saída padrão
     sleep_ms(10000);
     printf("Iniciando servidor HTTP\n");
+
+    // Inicializa a matriz de LEDs
+    npInit(LED_PIN);
+    npClear();
+    npWrite();
 
     // Inicializa o Wi-Fi
     if (cyw43_arch_init())
@@ -176,20 +232,6 @@ int main()
 
     printf("Wi-Fi conectado!\n");
 
-    // Configura o LED e os botões
-    gpio_init(LED_PIN);
-    gpio_set_dir(LED_PIN, GPIO_OUT);
-
-    gpio_init(BUTTON1_PIN);
-    gpio_set_dir(BUTTON1_PIN, GPIO_IN);
-    gpio_pull_up(BUTTON1_PIN);
-
-    gpio_init(BUTTON2_PIN);
-    gpio_set_dir(BUTTON2_PIN, GPIO_IN);
-    gpio_pull_up(BUTTON2_PIN);
-
-    printf("Botões configurados com pull-up nos pinos %d e %d\n", BUTTON1_PIN, BUTTON2_PIN);
-
     // Inicia o servidor HTTP
     start_http_server();
 
@@ -197,7 +239,6 @@ int main()
     while (true)
     {
         cyw43_arch_poll(); // Necessário para manter o Wi-Fi ativo
-        monitor_buttons(); // Atualiza o estado dos botões
         sleep_ms(100);     // Reduz o uso da CPU
     }
 
