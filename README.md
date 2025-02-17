@@ -2,7 +2,7 @@
 
 Este projeto consiste em um sistema embarcado desenvolvido como requisito para a Atividade Final do curso de capacitação **EmbarcaTech**. O sistema permite o **controle remoto de uma matriz de LEDs 5x5** utilizando um **Raspberry Pi Pico W**. A interface de controle é acessível via **Wi-Fi**, por meio de uma página web intuitiva que possibilita **ligar, desligar e visualizar** o estado dos LEDs em tempo real.
 
-Link para acessar o vídeo da explicação do código: ![Clique aqui]([https://marketplace.visualstudio.com/items?itemName=raspberry-pi.raspberry-pi-pico](https://drive.google.com/file/d/1-bGdaaGPfZlFNtaMzEG-4pJTlac0F1pY/view?usp=sharing)).
+Link para acessar o vídeo da explicação do código: [Clique aqui](https://drive.google.com/file/d/1-bGdaaGPfZlFNtaMzEG-4pJTlac0F1pY/view?usp=sharing).
 
 ---
 
