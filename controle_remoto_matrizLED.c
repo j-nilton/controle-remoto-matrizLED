@@ -12,8 +12,8 @@
 #define LED_PIN 7               // Pino GPIO onde os LEDs estão conectados
 #define NUM_ROWS 5              // Número de linhas da matriz de LEDs
 #define NUM_COLS 5              // Número de colunas da matriz de LEDs
-#define WIFI_SSID "JOSE NILTON" // Nome da rede Wi-Fi
-#define WIFI_PASS "11185706"    // Senha da rede Wi-Fi
+#define WIFI_SSID "Digite aqui" // Nome da rede Wi-Fi
+#define WIFI_PASS "Digite aqui" // Senha da rede Wi-Fi
 
 // Estrutura para armazenar a cor de um LED (formato GRB)
 struct pixel_t
