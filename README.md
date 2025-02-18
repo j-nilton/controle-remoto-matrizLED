@@ -73,12 +73,6 @@ O código foi estruturado em módulos para facilitar o entendimento. Abaixo est�
 
 ---
 
-## ⚙️ Diagrama de Blocos da execução do Código
-
-<div align="center">
-    <img src="img/diagrama.png" alt="Diagrama do Projeto" style="width:70%;">
-</div>
-
 ## ⚙️ Exemplo de Uso
 
 1. Acesse a **interface web** no navegador.
